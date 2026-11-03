@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdbool.h>
+#include <string.h>
 
 // Memory header_t
 typedef struct  header_t{
@@ -32,7 +33,7 @@ header_t* getfreeSpace(size_t size){
 }
 
 
-void* myalloc(size_t size){
+void* mymalloc(size_t size){
 
     ssize_t total_size = sizeof(header_t) + size;
 
@@ -74,7 +75,27 @@ void* myalloc(size_t size){
     return (void*)(header+ 1);
 }
 
+void* mycalloc(size_t no_elem, size_t size){
+
+    if( !no_elem || !size){
+        return NULL;
+    }
+
+    size_t newsize = no_elem * size; //Calculate the number of elements to be put into the memeory.
+
+    if ( size != newsize/no_elem){
+        return NULL; //If the number are not same integer has overflown.
+    }
+
+    void* mem_block = sbrk(newsize);
+
+     if (mem_block == (void*)-1 ){
+        return NULL;
+     }
+    memset(mem_block, 0, newsize);
+    return mem_block;
+}
 
 int main(){
-   int* name = (int*) myalloc(10);
+   int* name = (int*) mycalloc(10, 1);
 }
