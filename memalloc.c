@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <stdbool.h>
 #include <string.h>
@@ -96,6 +97,49 @@ void* mycalloc(size_t no_elem, size_t size){
     return mem_block;
 }
 
+void free(void* block_mem){
+
+    if (!block_mem){
+        return;
+    }
+    
+    header_t* tmp;
+
+    header_t* header = (header_t*)block_mem - 1;
+    void* program_brk = sbrk(0);
+
+// This is use to see if the full Memory or the end of the list is getting freed by the user.
+// If Yes = return the memory back to OS if not change the struct var (inuse) to false.
+// P.S. Uses Char so the calculation for size is in 1 Byte.
+    
+    if((char *)block_mem + header->size  == program_brk){ 
+
+        if(head == tail){
+            head = NULL;
+            tail = NULL;
+        }else{
+            tmp = head;
+            while(tmp->next != NULL){
+                if(tmp->next == tail){
+                    tmp->next = NULL;
+                    tail = tmp;
+                }
+                tmp = tmp->next;
+            }
+        }
+
+        void* freepointer = sbrk(0- sizeof(header_t) - header->size);
+
+        if (freepointer == (void*)-1){
+            printf("There was an error in SRBK freeing.");
+            return;
+        }
+        return ;
+    }
+    header->inuse = false;
+}
+
 int main(){
-   int* name = (int*) mycalloc(10, 1);
+   void* name =  mymalloc(10);
+    free(name);
 }
