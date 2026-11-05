@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <stdbool.h>
 #include <string.h>
+#include <sys/mman.h>
 
 // Memory header_t
 typedef struct  header_t{
@@ -37,7 +38,7 @@ header_t* getfreeSpace(size_t size){
 void* mymalloc(size_t size){
 
     ssize_t total_size = sizeof(header_t) + size;
-
+    void* newSpace;
     header_t* header;
 
     if (!size){
@@ -51,7 +52,11 @@ void* mymalloc(size_t size){
         return (void*) (header+1); // +1 cause the byte right after the header space is the memory allocated for the user.
     }
 
-    void* newSpace = sbrk(total_size);
+    if (total_size >= 4000){
+        newSpace  = mmap(NULL, total_size , PROT_READ | PROT_WRITE, MAP_PRIVATE| MAP_ANONYMOUS, -1,  0);
+    }else{
+        newSpace = sbrk(total_size);
+    }
 
     if (newSpace == (void *)-1){
         return NULL;
@@ -113,6 +118,7 @@ void free(void* block_mem){
 // P.S. Uses Char so the calculation for size is in 1 Byte.
     
     if((char *)block_mem + header->size  == program_brk){ 
+    void* freepointer;
 
         if(head == tail){
             head = NULL;
@@ -128,10 +134,19 @@ void free(void* block_mem){
             }
         }
 
-        void* freepointer = sbrk(0- sizeof(header_t) - header->size);
+        if (header->size >= 4000){
+          int check = munmap(header, header->size + sizeof(header_t)); 
+          if (check == -1){
+            printf("There was an error in freeing using munmap.");
+            return;
+          }
+        }else{
 
-        if (freepointer == (void*)-1){
-            printf("There was an error in SRBK freeing.");
+            freepointer = sbrk(0- sizeof(header_t) - header->size);
+        }
+
+        if (freepointer == (void*)-1 ){
+            printf("There was an error in freeing using sbrk.");
             return;
         }
         return ;
@@ -140,6 +155,6 @@ void free(void* block_mem){
 }
 
 int main(){
-   void* name =  mymalloc(10);
-    free(name);
+   void* name =  mymalloc(4001);
+   free(name);
 }
