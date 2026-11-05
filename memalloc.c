@@ -117,6 +117,17 @@ void free(void* block_mem){
 // If Yes = return the memory back to OS if not change the struct var (inuse) to false.
 // P.S. Uses Char so the calculation for size is in 1 Byte.
     
+    if(header->size >= 4000){
+        int check = munmap(header, header->size + sizeof(header_t)); 
+          if (check == -1){
+            printf("There was an error in freeing using munmap.");
+            return;
+        }
+        return ;
+    }
+
+    
+    
     if((char *)block_mem + header->size  == program_brk){ 
     void* freepointer;
 
@@ -134,16 +145,7 @@ void free(void* block_mem){
             }
         }
 
-        if (header->size >= 4000){
-          int check = munmap(header, header->size + sizeof(header_t)); 
-          if (check == -1){
-            printf("There was an error in freeing using munmap.");
-            return;
-          }
-        }else{
-
-            freepointer = sbrk(0- sizeof(header_t) - header->size);
-        }
+        freepointer = sbrk(0- sizeof(header_t) - header->size);
 
         if (freepointer == (void*)-1 ){
             printf("There was an error in freeing using sbrk.");
