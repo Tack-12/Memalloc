@@ -1,9 +1,12 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <unistd.h>
 #include <stdbool.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <pthread.h>
+
+//Global mutex to lock memory alloc / dealloc when a thread is using it.
+pthread_mutex_t memory_lock;
 
 // Memory header_t
 typedef struct  header_t{
@@ -45,10 +48,12 @@ void* mymalloc(size_t size){
         return NULL;
     }
 
+    pthread_mutex_lock(&memory_lock);
     header = getfreeSpace(size);
     
     if (header){
         header->inuse = true;
+        pthread_mutex_unlock(&memory_lock);
         return (void*) (header+1); // +1 cause the byte right after the header space is the memory allocated for the user.
     }
 
@@ -59,6 +64,7 @@ void* mymalloc(size_t size){
     }
 
     if (newSpace == (void *)-1){
+        pthread_mutex_unlock(&memory_lock);
         return NULL;
     }
 
@@ -78,6 +84,7 @@ void* mymalloc(size_t size){
         tail = header;
     }
 
+    pthread_mutex_unlock(&memory_lock);
     return (void*)(header+ 1);
 }
 
@@ -109,7 +116,8 @@ void free(void* block_mem){
     }
     
     header_t* tmp;
-
+    
+    pthread_mutex_lock(&memory_lock);
     header_t* header = (header_t*)block_mem - 1;
     void* program_brk = sbrk(0);
 
@@ -119,6 +127,7 @@ void free(void* block_mem){
     
     if(header->size >= 4000){
         int check = munmap(header, header->size + sizeof(header_t)); 
+        pthread_mutex_unlock(&memory_lock);
           if (check == -1){
             printf("There was an error in freeing using munmap.");
             return;
@@ -146,6 +155,7 @@ void free(void* block_mem){
         }
 
         freepointer = sbrk(0- sizeof(header_t) - header->size);
+        pthread_mutex_unlock(&memory_lock);
 
         if (freepointer == (void*)-1 ){
             printf("There was an error in freeing using sbrk.");
@@ -154,6 +164,7 @@ void free(void* block_mem){
         return ;
     }
     header->inuse = false;
+    pthread_mutex_unlock(&memory_lock);
 }
 
 int main(){
